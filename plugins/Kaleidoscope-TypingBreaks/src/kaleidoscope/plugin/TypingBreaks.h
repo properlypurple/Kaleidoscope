@@ -36,7 +36,7 @@ class TypingBreaks : public kaleidoscope::Plugin {
 
   static settings_t settings;
 
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t key_state);
+  EventHandlerResult onKeyEvent(KeyEvent &event);
   EventHandlerResult onFocusEvent(const char *command);
   EventHandlerResult onSetup();
 

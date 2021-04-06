@@ -138,10 +138,8 @@ class Qukeys : public kaleidoscope::Plugin {
   static constexpr int8_t layer_wildcard{-1};
 
   // Kaleidoscope hook functions.
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key,
-                                      KeyAddr key_addr,
-                                      uint8_t key_state);
-  EventHandlerResult beforeReportingState();
+  EventHandlerResult onPhysicalKeyEvent(KeyEvent &event);
+  EventHandlerResult afterEachCycle();
 
  private:
   // An array of Qukey objects in PROGMEM.
@@ -184,7 +182,7 @@ class Qukeys : public kaleidoscope::Plugin {
   // This is a guard against re-processing events when qukeys flushes them from
   // its event queue. We can't just use an "injected" key state flag, because
   // that would cause other plugins to also ignore the event.
-  bool flushing_queue_{false};
+  KeyEventId next_event_id_{0};
 
   // A cache of the current qukey's primary and alternate key values, so we
   // don't have to keep looking them up from PROGMEM.

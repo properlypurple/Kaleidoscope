@@ -85,7 +85,7 @@ class FocusSerial : public kaleidoscope::Plugin {
   static constexpr char NEWLINE = '\n';
 
   /* Hooks */
-  EventHandlerResult beforeReportingState();
+  EventHandlerResult afterEachCycle();
   EventHandlerResult onFocusEvent(const char *command);
 
  private:

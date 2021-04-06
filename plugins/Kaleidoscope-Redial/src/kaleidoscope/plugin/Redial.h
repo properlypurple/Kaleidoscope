@@ -31,7 +31,7 @@ class Redial : public kaleidoscope::Plugin {
 
   static bool shouldRemember(Key mappedKey);
 
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t key_state);
+  EventHandlerResult onKeyEvent(KeyEvent &event);
 
  private:
   static Key last_key_;

@@ -24,16 +24,14 @@ namespace kaleidoscope {
 namespace plugin {
 
 uint16_t Turbo::interval_ = 10;
-uint16_t Turbo::flashInterval_ = 69;
+uint16_t Turbo::flash_interval_ = 69;
 bool Turbo::sticky_ = false;
 bool Turbo::flash_ = true;
-cRGB Turbo::activeColor_ = CRGB(160, 0, 0);
+cRGB Turbo::active_color_ = CRGB(160, 0, 0);
 
-bool Turbo::enable = false;
-uint32_t Turbo::startTime = 0;
-uint32_t Turbo::flashStartTime = 0;
-KeyAddr Turbo::keyPositions[4];
-uint16_t Turbo::numKeys = 0;
+bool Turbo::active_ = false;
+uint32_t Turbo::start_time_ = 0;
+uint32_t Turbo::flash_start_time_ = 0;
 
 uint16_t Turbo::interval() {
   return interval_;
@@ -43,10 +41,10 @@ void Turbo::interval(uint16_t newVal) {
 }
 
 uint16_t Turbo::flashInterval() {
-  return flashInterval_;
+  return flash_interval_;
 }
 void Turbo::flashInterval(uint16_t newVal) {
-  flashInterval_ = newVal;
+  flash_interval_ = newVal;
 }
 
 bool Turbo::sticky() {
@@ -64,66 +62,65 @@ void Turbo::flash(bool newVal) {
 }
 
 cRGB Turbo::activeColor() {
-  return activeColor_;
+  return active_color_;
 }
 void Turbo::activeColor(cRGB newVal) {
-  activeColor_ = newVal;
+  active_color_ = newVal;
 }
 
-void Turbo::findKeyPositions() {
-  numKeys = 0;
+EventHandlerResult Turbo::onKeyEvent(KeyEvent &event) {
+  if (event.key != Key_Turbo)
+    return EventHandlerResult::OK;
 
-  for (auto key_addr : KeyAddr::all()) {
-    if (Layer.lookupOnActiveLayer(key_addr) == Key_Turbo) {
-      keyPositions[numKeys++] = key_addr;
-    }
-  }
-}
-
-EventHandlerResult Turbo::onSetup() {
-  Turbo::findKeyPositions();
-  return EventHandlerResult::OK;
-}
-
-EventHandlerResult Turbo::onLayerChange() {
-  Turbo::findKeyPositions();
-  return EventHandlerResult::OK;
-}
-
-EventHandlerResult Turbo::onKeyswitchEvent(Key &key, KeyAddr key_addr, uint8_t key_state) {
-  if (key != Key_Turbo) return EventHandlerResult::OK;
-  enable = sticky_ ? (keyIsPressed(key_state) ? enable : !enable) : keyIsPressed(key_state);
-  if (!enable) {
-    for (uint16_t i = 0; i < numKeys; i++) {
-      LEDControl::refreshAt(KeyAddr(keyPositions[i]));
-    }
+  if (keyToggledOn(event.state)) {
+    active_ = true;
+  } else {
+    active_ = false;
   }
   return EventHandlerResult::EVENT_CONSUMED;
 }
 
 EventHandlerResult Turbo::afterEachCycle() {
-  if (enable) {
-    if (Runtime.millisAtCycleStart() - startTime > interval_) {
-      kaleidoscope::Runtime.hid().keyboard().sendReport();
-      startTime = Runtime.millisAtCycleStart();
-    }
+  if (active_) {
+    if (Runtime.hasTimeExpired(start_time_, interval_)) {
+      // clear report, and send it, then restore it
+      Runtime.hid().keyboard().releaseAllKeys();
+      Runtime.hid().keyboard().sendReport();
+      // The HID module doesn't provide a way to simply send a blank report,
+      // then restore the previous one, so we use `handleKeyEvent()` to restore
+      // it, hopefully back to its original state.
+      Runtime.handleKeyEvent(KeyEvent(KeyAddr::none(), IS_PRESSED | INJECTED, Key_NoKey));
+      start_time_ = Runtime.millisAtCycleStart();
 
-    if (flash_) {
-      if (Runtime.millisAtCycleStart() - flashStartTime > flashInterval_ * 2) {
-        for (uint16_t i = 0; i < numKeys; i++) {
-          LEDControl::setCrgbAt(KeyAddr(keyPositions[i]), activeColor_);
-        }
-        flashStartTime = Runtime.millisAtCycleStart();
-      } else if (Runtime.millisAtCycleStart() - flashStartTime > flashInterval_) {
-        for (uint16_t i = 0; i < numKeys; i++) {
-          LEDControl::setCrgbAt(KeyAddr(keyPositions[i]), {0, 0, 0});
+      // Just in case we miss a key toggled off event, check every repeat cycle,
+      // and if there's no turbo key active, shut off.
+      active_ = false;
+      for (Key key : live_keys.all()) {
+        if (key == Key_Turbo) {
+          active_ = true;
         }
       }
-      LEDControl::syncLeds();
-    } else {
-      for (uint16_t i = 0; i < numKeys; i++) {
-        LEDControl::setCrgbAt(KeyAddr(keyPositions[i]), activeColor_);
+    }
+  }
+  return EventHandlerResult::OK;
+}
+
+EventHandlerResult Turbo::beforeSyncingLeds() {
+  if (flash_) {
+    static bool leds_on = false;
+    cRGB color = CRGB(0, 0, 0);
+    if (leds_on) {
+      color = active_color_;
+    }
+    if (Runtime.hasTimeExpired(flash_start_time_, flash_interval_)) {
+      for (KeyAddr key_addr : KeyAddr::all()) {
+        Key key = live_keys[key_addr];
+        if (key.isKeyboardKey()) {
+          LEDControl::setCrgbAt(key_addr, color);
+        }
       }
+      flash_start_time_ = Runtime.millisAtCycleStart();
+      leds_on = !leds_on;
     }
   }
   return EventHandlerResult::OK;

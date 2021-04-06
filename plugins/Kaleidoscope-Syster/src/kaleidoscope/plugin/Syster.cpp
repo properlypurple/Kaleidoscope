@@ -44,54 +44,53 @@ bool Syster::is_active(void) {
 }
 
 // --- hooks ---
-EventHandlerResult Syster::onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t keyState) {
+EventHandlerResult Syster::onKeyEvent(KeyEvent &event) {
   if (!is_active_) {
-    if (!isSyster(mapped_key))
+    if (!isSyster(event.key))
       return EventHandlerResult::OK;
 
-    if (keyToggledOn(keyState)) {
+    if (keyToggledOn(event.state)) {
       is_active_ = true;
-      systerAction(StartAction, NULL);
+      systerAction(StartAction, nullptr);
     }
     return EventHandlerResult::EVENT_CONSUMED;
   }
 
-  if (keyState & INJECTED)
+  if (event.state & INJECTED)
     return EventHandlerResult::OK;
 
-  if (isSyster(mapped_key)) {
+  if (isSyster(event.key)) {
     return EventHandlerResult::EVENT_CONSUMED;
   }
 
-  if (mapped_key == Key_Backspace && symbol_pos_ == 0) {
+  if (event.key == Key_Backspace && symbol_pos_ == 0) {
     return EventHandlerResult::EVENT_CONSUMED;
   }
 
-  if (keyToggledOff(keyState)) {
-    if (mapped_key == Key_Spacebar) {
-      for (uint8_t i = 0; i <= symbol_pos_; i++) {
-        handleKeyswitchEvent(Key_Backspace, UnknownKeyswitchLocation, IS_PRESSED | INJECTED);
-        kaleidoscope::Runtime.hid().keyboard().sendReport();
-        handleKeyswitchEvent(Key_Backspace, UnknownKeyswitchLocation, WAS_PRESSED | INJECTED);
-        kaleidoscope::Runtime.hid().keyboard().sendReport();
-      }
+  if (keyToggledOff(event.state)) {
+  }
 
-      systerAction(EndAction, NULL);
+  if (keyToggledOn(event.state)) {
+    if (event.key == Key_Spacebar) {
+      eraseChars(symbol_pos_);
+
+      systerAction(EndAction, nullptr);
 
       symbol_[symbol_pos_] = 0;
       systerAction(SymbolAction, symbol_);
       reset();
 
-      return EventHandlerResult::EVENT_CONSUMED;
-    }
-  }
+      // Returning ABORT here stops the spacebar from activating. Alternatively,
+      // we could remove this return statement, and instead allow the spacebar
+      // to take effect, resulting in a space in the output.
+      return EventHandlerResult::ABORT;
 
-  if (keyToggledOn(keyState)) {
-    if (mapped_key == Key_Backspace) {
+    } else if (event.key == Key_Backspace) {
       if (symbol_pos_ > 0)
-        symbol_pos_--;
+        --symbol_pos_;
+
     } else {
-      const char c = keyToChar(mapped_key);
+      const char c = keyToChar(event.key);
       if (c)
         symbol_[symbol_pos_++] = c;
     }
@@ -100,8 +99,34 @@ EventHandlerResult Syster::onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, u
   return EventHandlerResult::OK;
 }
 
+} // namespace plugin
+
+void eraseChars(int8_t n) {
+  // For the `event.addr`, we could track the address of the Syster key, but it
+  // might be on a layer that's no longer active by the time this gets
+  // called. We could search the active keymap for an existing `Key_Backspace`,
+  // but there might not be one. We could hijack the first idle key we find in
+  // the keymap, but we probably don't need to. Even if some other plugin reacts
+  // by inserting another event between these two, it's very unlikely that will
+  // cause a user-visible error.
+  auto event = KeyEvent(KeyAddr::none(), INJECTED, Key_Backspace);
+  while (n >= 0) {
+    event.state = IS_PRESSED | INJECTED;
+    Runtime.handleKeyEvent(event);
+    event.state = WAS_PRESSED | INJECTED;
+    Runtime.handleKeyEvent(event);
+  }
+  Runtime.handleKeyEvent(event);
+  // Change the event from a press to a release, but use the same id. This does
+  // come with a small risk that another plugin will be tracking events, but
+  // also ignoring event ids that it has seen before, but it's more likely to
+  // avoid an error than to cause one.
+  event.state = WAS_PRESSED | INJECTED;
+  Runtime.handleKeyEvent(event);
 }
-}
+
+} // namespace kaleidoscope
+
 
 __attribute__((weak)) const char keyToChar(Key key) {
   if (key.getFlags() != 0)

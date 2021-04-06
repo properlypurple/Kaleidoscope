@@ -80,66 +80,50 @@ void Leader::reset(void) {
   sequence_[0] = Key_NoKey;
 }
 
+// DEPRECATED
 void Leader::inject(Key key, uint8_t key_state) {
-  onKeyswitchEvent(key, UnknownKeyswitchLocation, key_state);
+  Runtime.handleKeyEvent(KeyEvent(KeyAddr::none(), key_state | INJECTED, key));
 }
 
 // --- hooks ---
-EventHandlerResult Leader::onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t keyState) {
-  if (keyState & INJECTED)
-    return EventHandlerResult::OK;
-
-  if (!isActive() && !isLeader(mapped_key))
+// This almost certainly should be `onPhysicalKeyEvent()`
+EventHandlerResult Leader::onKeyEvent(KeyEvent &event) {
+  if (keyToggledOff(event.state) || event.state & INJECTED)
     return EventHandlerResult::OK;
 
   if (!isActive()) {
-    // Must be a leader key!
-
-    if (keyToggledOff(keyState)) {
-      // not active, but a leader key = start the sequence on key release!
-      start_time_ = Runtime.millisAtCycleStart();
-      sequence_pos_ = 0;
-      sequence_[sequence_pos_] = mapped_key;
-    }
-
-    // If the sequence was not active yet, ignore the key.
-    return EventHandlerResult::EVENT_CONSUMED;
-  }
-
-  // active
-  int8_t action_index = lookup();
-
-  if (keyToggledOn(keyState)) {
-    sequence_pos_++;
-    if (sequence_pos_ > LEADER_MAX_SEQUENCE_LENGTH) {
-      reset();
+    if (!isLeader(event.key))
       return EventHandlerResult::OK;
-    }
 
     start_time_ = Runtime.millisAtCycleStart();
-    sequence_[sequence_pos_] = mapped_key;
-    action_index = lookup();
+    sequence_pos_ = 0;
+    sequence_[sequence_pos_] = event.key;
 
-    if (action_index >= 0) {
-      return EventHandlerResult::EVENT_CONSUMED;
-    }
-  } else if (keyIsPressed(keyState)) {
-    // held, no need for anything here.
-    return EventHandlerResult::EVENT_CONSUMED;
+    return EventHandlerResult::ABORT;
   }
+
+  ++sequence_pos_;
+  if (sequence_pos_ > LEADER_MAX_SEQUENCE_LENGTH) {
+    reset();
+    return EventHandlerResult::OK;
+  }
+
+  start_time_ = Runtime.millisAtCycleStart();
+  sequence_[sequence_pos_] = event.key;
+  int8_t action_index = lookup();
 
   if (action_index == NO_MATCH) {
     reset();
     return EventHandlerResult::OK;
   }
   if (action_index == PARTIAL_MATCH) {
-    return EventHandlerResult::EVENT_CONSUMED;
+    return EventHandlerResult::ABORT;
   }
 
   action_t leaderAction = (action_t) pgm_read_ptr((void const **) & (dictionary[action_index].action));
   (*leaderAction)(action_index);
 
-  return EventHandlerResult::EVENT_CONSUMED;
+  return EventHandlerResult::ABORT;
 }
 
 EventHandlerResult Leader::afterEachCycle() {

@@ -18,6 +18,7 @@
 #include "Kaleidoscope-FocusSerial.h"
 #include "kaleidoscope_internal/LEDModeManager.h"
 #include "kaleidoscope/keyswitch_state.h"
+#include "kaleidoscope/LiveKeys.h"
 
 using namespace kaleidoscope::internal; // NOLINT(build/namespaces)
 
@@ -31,8 +32,6 @@ uint8_t LEDControl::num_led_modes_ = LEDModeManager::numLEDModes();
 LEDMode *LEDControl::cur_led_mode_ = nullptr;
 bool LEDControl::enabled_ = true;
 
-LEDControl::LEDControl(void) {
-}
 uint8_t LEDControl::sync_interval_ = 32;
 uint16_t LEDControl::last_sync_time_ = 0;
 
@@ -124,7 +123,7 @@ cRGB LEDControl::getCrgbAt(KeyAddr key_addr) {
   return Runtime.device().getCrgbAt(Runtime.device().getLedIndex(key_addr));
 }
 
-void LEDControl::syncLeds(void) {
+void LEDControl::syncLeds() {
   if (!enabled_)
     return;
 
@@ -165,6 +164,7 @@ EventHandlerResult LEDControl::onKeyEvent(KeyEvent &event) {
     return EventHandlerResult::OK;
 
   if (keyToggledOn(event.state)) {
+
     if (event.key == Key_LEDEffectNext || event.key == Key_LEDEffectPrevious) {
       // First, check for an active shift key.
       bool shift_active = false;
@@ -186,6 +186,7 @@ EventHandlerResult LEDControl::onKeyEvent(KeyEvent &event) {
       } else {
         prev_mode();
       }
+
     } else if (event.key == Key_LEDToggle) {
       if (enabled_)
         disable();
@@ -333,8 +334,8 @@ EventHandlerResult FocusLEDCommand::onFocusEvent(const char *command) {
   return EventHandlerResult::EVENT_CONSUMED;
 }
 
-}
-}
+} // namespace plugin
+} // namespace kaleidoscope
 
 kaleidoscope::plugin::LEDControl LEDControl;
 kaleidoscope::plugin::FocusLEDCommand FocusLEDCommand;

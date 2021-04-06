@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "kaleidoscope/KeyEvent.h"
 #include "kaleidoscope/Runtime.h"
 #include "kaleidoscope/plugin/LEDMode.h"
 
@@ -37,8 +36,6 @@ class LEDMode;
 
 class LEDControl : public kaleidoscope::Plugin {
  public:
-  LEDControl(void);
-
   static void next_mode(void);
   static void prev_mode(void);
   static void setup(void);

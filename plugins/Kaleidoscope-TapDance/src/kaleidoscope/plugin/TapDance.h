@@ -20,6 +20,7 @@
 #include "kaleidoscope/Runtime.h"
 #include "kaleidoscope/LiveKeys.h"
 #include <Kaleidoscope-Ranges.h>
+#include "kaleidoscope/KeyAddr.h"
 #include "kaleidoscope/KeyAddrEventQueue.h"
 
 #define TD(n) Key(kaleidoscope::ranges::TD_FIRST + n)
@@ -48,7 +49,7 @@ class TapDance : public kaleidoscope::Plugin {
 
   void actionKeys(uint8_t tap_count, ActionType tap_dance_action, uint8_t max_keys, const Key tap_keys[]);
 
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t keyState);
+  EventHandlerResult onPhysicalKeyEvent(KeyEvent &event);
   EventHandlerResult afterEachCycle();
 
   static constexpr bool isTapDanceKey(Key key) {
@@ -63,12 +64,15 @@ class TapDance : public kaleidoscope::Plugin {
   // The event queue stores a series of press and release events.
   KeyAddrEventQueue<queue_capacity_> event_queue_;
 
-  static KeyAddr release_addr_;
+  // The number of taps in the current TapDance sequence.
+  static uint8_t tap_count_;
+
+  void flushQueue(KeyAddr ignored_addr = KeyAddr::none());
 
 };
-}
 
-}
+}  // namespace plugin
+}  // namespace kaleidoscope
 
 void tapDanceAction(uint8_t tap_dance_index, KeyAddr key_addr, uint8_t tap_count,
                     kaleidoscope::plugin::TapDance::ActionType tap_dance_action);

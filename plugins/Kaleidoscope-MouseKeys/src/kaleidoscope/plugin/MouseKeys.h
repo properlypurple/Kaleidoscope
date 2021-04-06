@@ -38,9 +38,8 @@ class MouseKeys_ : public kaleidoscope::Plugin {
   static void setSpeedLimit(uint8_t speed_limit);
 
   EventHandlerResult onSetup();
-  EventHandlerResult beforeReportingState();
   EventHandlerResult afterEachCycle();
-  EventHandlerResult onKeyswitchEvent(Key &mappedKey, KeyAddr key_addr, uint8_t keyState);
+  EventHandlerResult onKeyEvent(KeyEvent &event);
 
  private:
   static uint8_t mouseMoveIntent;
@@ -49,6 +48,7 @@ class MouseKeys_ : public kaleidoscope::Plugin {
   static uint16_t wheel_start_time_;
 
   static void scrollWheel(uint8_t keyCode);
+  static void prepareMouseReport();
 };
 }
 }

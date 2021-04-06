@@ -35,7 +35,7 @@ class GhostInTheFirmware : public kaleidoscope::Plugin {
 
   static void activate(void);
 
-  EventHandlerResult beforeReportingState();
+  EventHandlerResult afterEachCycle();
 
  private:
   static bool is_active_;

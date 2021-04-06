@@ -45,8 +45,8 @@ class EventDropper_ : public kaleidoscope::Plugin {
  public:
   EventDropper_() {}
 
-  kaleidoscope::EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t key_state) {
-    return kaleidoscope::EventHandlerResult::EVENT_CONSUMED;
+  kaleidoscope::EventHandlerResult onKeyEvent(KeyEvent &event) {
+    return kaleidoscope::EventHandlerResult::ABORT;
   }
 };
 

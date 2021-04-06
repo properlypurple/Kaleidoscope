@@ -33,7 +33,7 @@ void GhostInTheFirmware::activate(void) {
   is_active_ = true;
 }
 
-EventHandlerResult GhostInTheFirmware::beforeReportingState() {
+EventHandlerResult GhostInTheFirmware::afterEachCycle() {
   if (!is_active_)
     return EventHandlerResult::OK;
 
@@ -56,12 +56,12 @@ EventHandlerResult GhostInTheFirmware::beforeReportingState() {
       byte row = pgm_read_byte(&(ghost_keys[current_pos_].row));
       byte col = pgm_read_byte(&(ghost_keys[current_pos_].col));
 
-      handleKeyswitchEvent(Key_NoKey, KeyAddr(row, col), WAS_PRESSED);
+      Runtime.handleKeyEvent(KeyEvent(KeyAddr(row, col), WAS_PRESSED));
     } else if (is_pressed_) {
       byte row = pgm_read_byte(&(ghost_keys[current_pos_].row));
       byte col = pgm_read_byte(&(ghost_keys[current_pos_].col));
 
-      handleKeyswitchEvent(Key_NoKey, KeyAddr(row, col), IS_PRESSED);
+      Runtime.handleKeyEvent(KeyEvent(KeyAddr(row, col), IS_PRESSED));
     } else if (Runtime.hasTimeExpired(start_time_, delay_timeout_)) {
       current_pos_++;
       press_timeout_ = 0;

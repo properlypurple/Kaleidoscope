@@ -19,6 +19,7 @@
 #pragma once
 
 #include "kaleidoscope/Runtime.h"
+#include "kaleidoscope/KeyEventTracker.h"
 #include <Kaleidoscope-Ranges.h>
 
 #ifndef SPACECADET_MAP_END
@@ -33,43 +34,52 @@ namespace plugin {
 
 class SpaceCadet : public kaleidoscope::Plugin {
  public:
-  //Internal Class
-  //Declarations for the modifier key mapping
+  // Internal Class
+  // Declarations for the modifier key mapping
   class KeyBinding {
    public:
-    //Empty constructor; set the vars separately
-    KeyBinding(void) {}
-    //Constructor with input and output
-    KeyBinding(Key input_, Key output_);
-    //Constructor with all three set
-    KeyBinding(Key input_, Key output_, uint16_t timeout_);
-    //The key that is pressed
+    // Empty constructor; set the vars separately
+    KeyBinding() {}
+    // Constructor with input and output
+    KeyBinding(Key input, Key output);
+    // Constructor with all three set
+    KeyBinding(Key input, Key output, uint16_t timeout);
+    // The key that is pressed
     Key input;
-    //the key that is sent
+    // the key that is sent
     Key output;
-    //The timeout (default to global timeout)
+    // The timeout (default to global timeout)
     uint16_t timeout = 0;
-    //The flag (set to 0)
-    bool flagged = false;
-    //the start time for this key press
-    uint16_t start_time = 0;
+    // to check for the end of a list (SPACECADET_MAP_END)
+    bool isEmpty() const {
+      return (input == Key_NoKey && output == Key_NoKey && timeout == 0);
+    }
   };
 
   SpaceCadet(void);
 
-  //Methods
+  // Methods
   static void enable(void);
   static void disable(void);
   static bool active(void);
 
-  //Publically accessible variables
+  // Publically accessible variables
   static uint16_t time_out;  //  The global timeout in milliseconds
   static SpaceCadet::KeyBinding * map;  // The map of key bindings
 
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t key_state);
+  EventHandlerResult onPhysicalKeyEvent(KeyEvent &event);
+  EventHandlerResult afterEachCycle();
 
  private:
   static bool disabled;
+
+  static KeyEventTracker event_tracker_;
+
+  static int8_t pending_map_index_;
+  static KeyEvent pending_event_;
+  static uint16_t start_time_;
+
+  int8_t getSpaceCadetKeyIndex(Key key) const;
 };
 }
 

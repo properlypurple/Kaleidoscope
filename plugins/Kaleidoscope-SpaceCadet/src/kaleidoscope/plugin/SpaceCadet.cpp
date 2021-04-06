@@ -22,254 +22,174 @@
 namespace kaleidoscope {
 namespace plugin {
 
-//Constructor with input and output, and assume default timeout
-SpaceCadet::KeyBinding::KeyBinding(Key input_, Key output_) {
-  input = input_;
-  output = output_;
-}
+// Constructor with input and output, and assume default timeout
+SpaceCadet::KeyBinding::KeyBinding(Key input, Key output)
+  : input(input), output(output) {}
 
-//Constructor with all three set
-SpaceCadet::KeyBinding::KeyBinding(Key input_, Key output_, uint16_t timeout_) {
-  input = input_;
-  output = output_;
-  timeout = timeout_;
-}
+// Constructor with all three set
+SpaceCadet::KeyBinding::KeyBinding(Key input, Key output, uint16_t timeout)
+  : input(input), output(output), timeout(timeout) {}
 
-//Space Cadet
+// =============================================================================
+// Space Cadet class variables
 SpaceCadet::KeyBinding * SpaceCadet::map;
 uint16_t SpaceCadet::time_out = 1000;
 bool SpaceCadet::disabled = false;
 
+// These variables are used to keep track of any pending unresolved SpaceCadet
+// key that has been pressed. If `pending_map_index_` is negative, it means
+// there is no such pending keypress. Otherwise, it holds the value of the index
+// of that key in the array.
+int8_t SpaceCadet::pending_map_index_ = -1;
+// `pending_event_` holds a copy of the pending event.
+KeyEvent SpaceCadet::pending_event_;
+// `start_time_` is a timestamp of when the pending keypress was detected. It's
+// used to determine if the press has timed out.
+uint16_t SpaceCadet::start_time_ = 0;
+
+KeyEventTracker SpaceCadet::event_tracker_;
+
+// =============================================================================
+// SpaceCadet functions
+
+// Constructor
 SpaceCadet::SpaceCadet() {
   static SpaceCadet::KeyBinding initialmap[] = {
-    //By default, respect the default timeout
-    {Key_LeftShift, Key_LeftParen, 0}
-    , {Key_RightShift, Key_RightParen, 0}
-    //These may be uncommented, added, or set in the main sketch
-    /*,{Key_LeftGui,Key_LeftCurlyBracket, 250}
-    ,{Key_RightAlt,Key_RightCurlyBracket, 250}
-    ,{Key_LeftControl,Key_LeftBracket, 250}
-    ,{Key_RightControl,Key_RightBracket, 250}*/
-    , SPACECADET_MAP_END
+    // By default, respect the default timeout
+    {Key_LeftShift, Key_LeftParen, 0},
+    {Key_RightShift, Key_RightParen, 0},
+    // These may be uncommented, added, or set in the main sketch
+    /*
+    {Key_LeftGui, Key_LeftCurlyBracket, 250},
+    {Key_RightAlt, Key_RightCurlyBracket, 250},
+    {Key_LeftControl, Key_LeftBracket, 250},
+    {Key_RightControl, Key_RightBracket, 250},
+    */
+    SPACECADET_MAP_END
   };
 
   map = initialmap;
 }
 
-//Function to enable SpaceCadet behavior
-void SpaceCadet::enable() {
-  disabled = false;
-}
-
-//Function to disable SpaceCadet behavior
-void SpaceCadet::disable() {
-  disabled = true;
-}
-
-//Function to determine whether SpaceCadet is active (useful for Macros and other plugins)
+// -----------------------------------------------------------------------------
+// Function to determine whether SpaceCadet is active (useful for Macros and
+// other plugins).
 bool SpaceCadet::active() {
   return !disabled;
 }
 
-EventHandlerResult SpaceCadet::onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t key_state) {
-  //Handle our synthetic keys for enabling and disabling functionality
-  if (mapped_key.getRaw() >= kaleidoscope::ranges::SC_FIRST &&
-      mapped_key.getRaw() <= kaleidoscope::ranges::SC_LAST) {
-    //Only fire the activate / deactivate on the initial press (not held or release)
-    if (keyToggledOn(key_state)) {
-      if (mapped_key == Key_SpaceCadetEnable) {
-        enable();
-      } else if (mapped_key == Key_SpaceCadetDisable) {
-        disable();
-      }
-    }
+// Function to enable SpaceCadet behavior
+void SpaceCadet::enable() {
+  disabled = false;
+}
 
-    return EventHandlerResult::EVENT_CONSUMED;
+// Function to disable SpaceCadet behavior
+void SpaceCadet::disable() {
+  disabled = true;
+}
+
+// =============================================================================
+// Event handler hook functions
+
+// -----------------------------------------------------------------------------
+EventHandlerResult SpaceCadet::onPhysicalKeyEvent(KeyEvent &event) {
+  // If SpaceCadet has already processed and released this event, ignore
+  // it. There's no need to update the event tracker in this one case.
+  if (event_tracker_.shouldIgnore(event))
+    return EventHandlerResult::OK;
+
+  // Turn SpaceCadet on or off.
+  if (keyToggledOn(event.state)) {
+    if (event.key == Key_SpaceCadetEnable) {
+      enable();
+      return event_tracker_.done(event, EventHandlerResult::EVENT_CONSUMED);
+    }
+    if (event.key == Key_SpaceCadetDisable) {
+      disable();
+      return event_tracker_.done(event, EventHandlerResult::EVENT_CONSUMED);
+    }
   }
 
-  //if SpaceCadet is disabled, this was an injected key, it was NoKey,
-  //or if they key somehow came here without being either pressed or released,
-  //return the mapped key and just get out of here.
-  if (
-    disabled
-    || (key_state & INJECTED)
-    || mapped_key == Key_NoKey
-    || (!keyIsPressed(key_state) && !keyWasPressed(key_state))
-  ) {
+  // Do nothing if disabled, but keep the event tracker current.
+  if (disabled)
+    return event_tracker_.done(event, EventHandlerResult::OK);
+
+  // If event.addr is not a physical key, ignore it; some other plugin injected
+  // it. This check should be unnecessary.
+  if (!event.addr.isValid() || (event.state & INJECTED) != 0) {
     return EventHandlerResult::OK;
   }
 
-  // If a key has been just toggled on...
-  if (keyToggledOn(key_state)) {
-
-    //check to see if we found a valid key. Assume not valid.
-    bool valid_key = false;
-    bool other_mapped_key_flagged = false;
-
-    //Check the current map to see if any other key has been already flagged
-    //Exit condition is if we reach the special SPACECADET_MAP_END sentinel
-    for (
-      uint8_t i = 0 ;
-      !(
-        map[i].input == Key_NoKey
-        && map[i].output == Key_NoKey
-        && map[i].timeout == 0
-      ) ;
-      ++i
-    ) {
-
-      if (map[i].flagged
-          && map[i].input != mapped_key) {
-        other_mapped_key_flagged = true;
-        break;
-      }
+  if (keyToggledOn(event.state)) {
+    if (pending_map_index_ >= 0) {
+      // There was already a pending SpaceCadet key; interrupt it by releasing
+      // its event unchanged now.
+      Runtime.handlePhysicalKeyEvent(pending_event_);
     }
-
-    //This will only set one key, and, if it isn't in our map, it clears everything for the non-pressed key
-    //Exit condition is if we reach the special SPACECADET_MAP_END sentinel
-    for (
-      uint8_t i = 0 ;
-      !(
-        map[i].input == Key_NoKey
-        && map[i].output == Key_NoKey
-        && map[i].timeout == 0
-      ) ;
-      ++i
-    ) {
-
-      if (mapped_key == map[i].input) {
-        //Only activate this as part of the mapping if there isn't already a
-        //key waiting for timeout. This allows us to return OK later and for
-        //this loop to inject all the other flagged keys
-        if (!other_mapped_key_flagged) {
-          //The keypress was valid and a match. Mark it as flagged and reset the counter
-          map[i].flagged = true;
-          map[i].start_time = Runtime.millisAtCycleStart();
-
-          //yes, we found a valid key
-          valid_key = true;
-        }
-      } else {
-        //If the key entry we're looking at was flagged previously, add it to the
-        //report before we do anything else (this handles the situation where we
-        //hit another key after this -- if it's a modifier, we want the modifier
-        //key to be added to the report, for things like ctrl, alt, shift, etc)
-        if (map[i].flagged) {
-          handleKeyswitchEvent(map[i].input, UnknownKeyswitchLocation, IS_PRESSED | INJECTED);
-        }
-
-        //The keypress wasn't a match, so we need to mark it as not flagged and
-        //reset the timer for it to disable everything.
-        map[i].flagged = false;
-        map[i].start_time = 0;
-      }
+    // Check to see if the newly-pressed key is a SpaceCadet key.
+    pending_map_index_ = getSpaceCadetKeyIndex(event.key);
+    if (pending_map_index_ >= 0) {
+      pending_event_ = event;
+      start_time_ = Runtime.millisAtCycleStart();
+      return event_tracker_.done(event, EventHandlerResult::ABORT);
     }
-
-    //If we found a valid key in our map, we don't actually want to send anything.
-    //This gets around an issue in Windows if we map a SpaceCadet function on top
-    //of Alt -- sending Alt by itself activates the menubar.  We don't want to send
-    //anything until we know that we're either sending the alternate key or we
-    //know for sure that we want to send the originally pressed key.
-    if (valid_key) {
-      return EventHandlerResult::EVENT_CONSUMED;
+  } else {
+    if (pending_map_index_ >= 0 && event.addr == pending_event_.addr) {
+      // The pending key got released within its timeout period. Release it with
+      // the alternate key value, then send its release event:
+      pending_event_.key = map[pending_map_index_].output;
+      Runtime.handlePhysicalKeyEvent(pending_event_);
+      // Finally, clear state:
+      pending_map_index_ = -1;
     }
+  }
+  // Here, we might be letting a release event through while the SpaceCadet key
+  // is still held, but before it times out. If the released key is a modifier,
+  // this could be considered to be a rollover bug, where the modifier should
+  // apply to the SpaceCadet key, but doesn't. Furthermore, if this is the case,
+  // we're changing the order of events, and we're required to release strictly
+  // increasing event ids, so we need to replace the id of the event.
+  if (pending_map_index_ >= 0 &&
+      keyToggledOff(event.state) &&
+      event.addr != pending_event_.addr) {
+    // Swap the event's id with the id of the pending event in order to
+    // guarantee that event IDs are monotonically increasing.
+    event.swapId(pending_event_);
+  }
+  return event_tracker_.done(event, EventHandlerResult::OK);
+}
 
-    //this is all we need to do on keypress, let the next handler do its thing too.
-    //This case assumes we weren't a valid key that we were watching, so we don't
-    //need to do anything else.
+// -----------------------------------------------------------------------------
+EventHandlerResult SpaceCadet::afterEachCycle() {
+  // If there's no pending event, return.
+  if (pending_map_index_ < 0)
     return EventHandlerResult::OK;
+  // Get timeout value for the pending key.
+  uint16_t pending_timeout = time_out;
+  if (map[pending_map_index_].timeout != 0)
+    pending_timeout = map[pending_map_index_].timeout;
+  if (Runtime.hasTimeExpired(start_time_, pending_timeout)) {
+    // The timer has expired; release the pending event unchanged.
+    event_tracker_.done(pending_event_, EventHandlerResult::OK);
+    Runtime.handlePhysicalKeyEvent(pending_event_);
+    pending_map_index_ = -1;
   }
-
-  // if the state is empty, that means that either an activating key wasn't pressed,
-  // or we used another key in the interim. in both cases, nothing special to do.
-  bool valid_key = false;
-  bool pressed_key_was_valid = false;
-  uint8_t index = 0;
-
-  //Look to see if any keys in our map are currently flagged.
-  //Exit condition is if we reach the special SPACECADET_MAP_END sentinel
-  for (
-    uint8_t i = 0 ;
-    !(
-      map[i].input == Key_NoKey
-      && map[i].output == Key_NoKey
-      && map[i].timeout == 0
-    );
-    ++i
-  ) {
-
-    //The key we're looking at was previously flagged (so perform action)
-    if (map[i].flagged) {
-      valid_key = true;
-      index = i;
-    }
-
-    //the key we're looking at was valid (in the map)
-    if (map[i].input == mapped_key) {
-      pressed_key_was_valid = true;
-    }
-  }
-
-  //If no valid mapped keys were pressed, simply return the key that
-  //was originally passed in.
-  if (!valid_key) {
-    return EventHandlerResult::OK;
-  }
-
-  //use the map index to find the local timeout for this key
-  uint16_t current_timeout = map[index].timeout;
-  //If that isn't set, use the global timeout setting.
-  if (current_timeout == 0) {
-    current_timeout = time_out;
-  }
-
-  //Check to determine if we have surpassed our timeout for holding this key
-  if (Runtime.hasTimeExpired(map[index].start_time, current_timeout)) {
-    // if we timed out, that means we need to keep pressing the mapped
-    // key, but we won't need to send the alternative key in the end
-    map[index].flagged = false;
-    map[index].start_time = 0;
-
-    //Just return this key itself (we won't run alternative keys check)
-    return EventHandlerResult::OK;
-  }
-
-  // If the key that was pressed isn't one of our mapped keys, just
-  // return. This can happen when another key is released, and that should not
-  // interrupt us.
-  if (!pressed_key_was_valid) {
-    return EventHandlerResult::OK;
-  }
-
-  // if a key toggled off (and that must be one of the mapped keys at this point),
-  // send the alternative key instead (if we were interrupted, we bailed out earlier).
-  if (keyToggledOff(key_state)) {
-    Key alternate_key = map[index].output;
-
-    //Since we are sending the actual key (no need for shift, etc),
-    //only need to send that key and not the original key.
-
-    //inject our new key
-    handleKeyswitchEvent(alternate_key, key_addr, IS_PRESSED | INJECTED);
-
-    //Unflag the key so we don't try this again.
-    map[index].flagged = false;
-    map[index].start_time = 0;
-  }
-
-  //Special case here for if we had a valid key that's continuing to be held.
-  //If it's a valid key, and it's continuing to be held, return NoKey.
-  //This prevents us from accidentally triggering a keypress that we didn't
-  //mean to handle.
-  if (valid_key) {
-    return EventHandlerResult::EVENT_CONSUMED;
-  }
-
-  //Finally, as a final sanity check, simply return the passed-in key as-is.
   return EventHandlerResult::OK;
 }
 
+// =============================================================================
+// Private helper function(s)
+
+int8_t SpaceCadet::getSpaceCadetKeyIndex(Key key) const {
+  for (uint8_t i = 0; !map[i].isEmpty(); ++i) {
+    if (map[i].input == key) {
+      return i;
+    }
+  }
+  return -1;
 }
-}
+
+} // namespace plugin
+} // namespace kaleidoscope
 
 kaleidoscope::plugin::SpaceCadet SpaceCadet;

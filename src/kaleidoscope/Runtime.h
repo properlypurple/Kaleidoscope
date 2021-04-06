@@ -19,6 +19,9 @@
 #include "kaleidoscope_internal/device.h"
 #include "kaleidoscope/event_handler_result.h"
 #include "kaleidoscope/hooks.h"
+#include "kaleidoscope/KeyEvent.h"
+#include "kaleidoscope/LiveKeys.h"
+#include "kaleidoscope/layers.h"
 
 namespace kaleidoscope {
 

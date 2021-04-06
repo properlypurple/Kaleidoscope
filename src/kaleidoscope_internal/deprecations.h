@@ -50,6 +50,11 @@
   "`handleKeyswitchEvent()` has been deprecated.\n"  __NL__ \
   "Please use `Runtime.handleKeyEvent()` instead."
 
+#define _DEPRECATED_MESSAGE_LEDCONTROL_SYNCDELAY                __NL__ \
+  "The `LEDControl.syncDelay` variable has been deprecated.\n"  __NL__ \
+  "It will be removed after 2021-09-30.\n"                      __NL__ \
+  "Please use the `LEDControl.setInterval()` function instead."
+
 #define _DEPRECATED_MESSAGE_ON_KEYSWITCH_EVENT_V1                             __NL__ \
   "The `onKeyswitchEvent()` event handler is deprecated.\n"                   __NL__ \
   "Please replace it with an `onKeyEvent()` handler. See the documentation\n" __NL__ \

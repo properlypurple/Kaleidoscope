@@ -20,6 +20,10 @@
 #include "kaleidoscope/Runtime.h"
 #include "kaleidoscope/plugin/LEDMode.h"
 
+#ifndef NDEPRECATED
+#include "kaleidoscope_internal/deprecations.h"
+#endif
+
 #define LED_TOGGLE   B00000001  // Synthetic, internal
 
 #define Key_LEDEffectNext Key(0, KEY_FLAGS | SYNTHETIC | IS_INTERNAL | LED_TOGGLE)
@@ -93,7 +97,20 @@ class LEDControl : public kaleidoscope::Plugin {
   //
   static void activate(LEDModeInterface *plugin);
 
+#ifndef NDEPRECATED
+  DEPRECATED(LEDCONTROL_SYNCDELAY)
   static uint8_t syncDelay;
+#endif
+
+  static void setSyncInterval(uint8_t interval) {
+    sync_interval_ = interval;
+#ifndef NDEPRECATED
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    syncDelay = interval;
+#pragma GCC diagnostic pop
+#endif
+  }
 
   EventHandlerResult onSetup();
   EventHandlerResult onKeyEvent(KeyEvent &event);
@@ -113,8 +130,9 @@ class LEDControl : public kaleidoscope::Plugin {
   }
 
  private:
-  static uint16_t syncTimer;
   static uint8_t mode_id;
+  static uint16_t last_sync_time_;
+  static uint8_t sync_interval_;
   static uint8_t num_led_modes_;
   static LEDMode *cur_led_mode_;
   static bool enabled_;

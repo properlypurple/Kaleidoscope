@@ -29,7 +29,7 @@ class GeminiPR : public kaleidoscope::Plugin {
  public:
   GeminiPR(void) {}
 
-  EventHandlerResult onKeyswitchEvent(Key &mapped_key, KeyAddr key_addr, uint8_t keyState);
+  EventHandlerResult onKeyEvent(KeyEvent &event);
  private:
   static uint8_t keys_held_;
   static uint8_t state_[6];
@@ -87,9 +87,9 @@ enum {
   ZR,
   END   = ZR,
 };
-}
-}
-}
-}
+} // namespace geminipr
+} // namespace steno
+} // namespace plugin
+} // namespace kaleidoscope
 
 extern kaleidoscope::plugin::steno::GeminiPR GeminiPR;

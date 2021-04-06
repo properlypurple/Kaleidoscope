@@ -48,7 +48,7 @@ class MagicCombo : public kaleidoscope::Plugin {
 
   static uint16_t min_interval;
 
-  EventHandlerResult beforeReportingState();
+  EventHandlerResult afterEachCycle();
 
  private:
   static uint16_t start_time_;

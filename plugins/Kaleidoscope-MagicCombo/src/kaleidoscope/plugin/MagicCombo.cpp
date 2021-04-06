@@ -23,7 +23,7 @@ namespace plugin {
 uint16_t MagicCombo::min_interval = 500;
 uint16_t MagicCombo::start_time_ = 0;
 
-EventHandlerResult MagicCombo::beforeReportingState() {
+EventHandlerResult MagicCombo::afterEachCycle() {
   for (byte i = 0; i < magiccombo::combos_length; i++) {
     bool match = true;
     byte j;

@@ -19,14 +19,21 @@
 
 #include "kaleidoscope/driver/keyscanner/Base.h"
 #include "kaleidoscope/device/device.h"
+#include "kaleidoscope/KeyEvent.h"
+#include "kaleidoscope/Runtime.h"
 
 namespace kaleidoscope {
 namespace driver {
 namespace keyscanner {
 
 template<>
-void Base<kaleidoscope::Device::Props::KeyScannerProps>::handleKeyswitchEvent(Key mappedKey, kaleidoscope::Device::Props::KeyScannerProps::KeyAddr key_addr, uint8_t keyState) {
-  ::handleKeyswitchEvent(mappedKey, key_addr, keyState);
+void Base<kaleidoscope::Device::Props::KeyScannerProps>::handleKeyswitchEvent(
+  Key key __attribute__((unused)),
+  kaleidoscope::Device::Props::KeyScannerProps::KeyAddr key_addr,
+  uint8_t key_state) {
+
+  kaleidoscope::Runtime.handlePhysicalKeyEvent(KeyEvent(key_addr, key_state));
+
 }
 } // namespace keyscanner
 } // namespace driver

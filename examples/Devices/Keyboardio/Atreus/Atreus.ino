@@ -30,6 +30,7 @@
 #include "Kaleidoscope-OneShot.h"
 #include "Kaleidoscope-Qukeys.h"
 #include "Kaleidoscope-SpaceCadet.h"
+#include "Kaleidoscope-AutoShift.h"
 
 
 
@@ -103,6 +104,8 @@ KEYMAPS(
 KALEIDOSCOPE_INIT_PLUGINS(
   EEPROMSettings,
   EEPROMKeymap,
+  AutoShift,
+  AutoShiftConfiguration,
   Focus,
   FocusEEPROMCommand,
   FocusSettingsCommand,

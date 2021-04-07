@@ -16,6 +16,8 @@
  */
 
 #include <Kaleidoscope-AutoShift.h>
+#include <Kaleidoscope-EEPROM-Settings.h>
+#include <Kaleidoscope-FocusSerial.h>
 
 #include "kaleidoscope/keyswitch_state.h"
 #include "kaleidoscope/KeyAddr.h"
@@ -51,16 +53,15 @@ KeyEventTracker AutoShift::event_tracker_;
 // `KeyAddr::none()`, so the plugin will start in an inactive state.
 KeyEvent pending_event_;
 
+// By default, let AutoShift handle all supported classes of keys.
+uint8_t AutoShift::enabled_classes_ =
+  (uint8_t)AutoShift::AutoShiftClass::LETTERS |
+  (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
+  (uint8_t)AutoShift::AutoShiftClass::SPECIAL;
+
 // =============================================================================
 // AutoShift functions
 
-// -----------------------------------------------------------------------------
-// Function to enable AutoShift behavior
-void AutoShift::enable() {
-  enabled_ = true;
-}
-
-// Function to disable AutoShift behavior
 void AutoShift::disable() {
   enabled_ = false;
   if (pending_event_.addr.isValid()) {
@@ -68,16 +69,42 @@ void AutoShift::disable() {
   }
 }
 
-// Toggle the enabled state of the plugin
-void AutoShift::toggle() {
-  enabled_ = !enabled_;
-}
-
 // -----------------------------------------------------------------------------
 // Test for whether or not to apply AutoShift to a given `Key`. This function
-// will be expanded to include more options for which keys it will apply to.
-bool AutoShift::isAutoShiftable(Key key) {
-  return key.isKeyboardKey() && !key.isKeyboardModifier();
+// can be overridden from the user sketch.
+__attribute__((weak)) bool AutoShift::isAutoShiftable(Key key) {
+  return enabledForKey(key);
+}
+
+// The default method that determines whether a particular key is an auto-shift
+// candidate. Used by `isAutoShiftable()`, separate to allow re-use when the
+// caller is overridden.
+bool AutoShift::enabledForKey(Key key) {
+  // We only support auto-shifting keyboard keys.
+  if (!key.isKeyboardKey())
+    return false;
+
+  // We do not support auto-shifting modifiers alone.
+  if (key.isKeyboardModifier())
+    return false;
+
+  // We will be comparing the current key _without_ flags, for the sake of
+  // simplicity.
+  Key k = key;
+  k.setFlags(0);
+
+  if (isClassEnabled(AutoShiftClass::LETTERS)) {
+    if (k >= Key_A && k <= Key_Z) return true;
+  }
+  if (isClassEnabled(AutoShiftClass::NUMBERS)) {
+    if (k >= Key_1 && k <= Key_0) return true;
+  }
+  if (isClassEnabled(AutoShiftClass::SPECIAL)) {
+    if (k >= Key_Minus && k <= Key_Slash) return true;
+    if (k == Key_NonUsBackslashAndPipe) return true;
+  }
+
+  return false;
 }
 
 // =============================================================================
@@ -152,7 +179,100 @@ EventHandlerResult AutoShift::afterEachCycle() {
   return EventHandlerResult::OK;
 }
 
+/********* AutoShiftConfiguration *********/
+
+AutoShiftConfiguration::settings_t AutoShiftConfiguration::settings_ = {
+  .disabled = false,
+  .timeout = 175,
+  .enabled_classes = (uint8_t)AutoShift::AutoShiftClass::LETTERS |
+  (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
+  (uint8_t)AutoShift::AutoShiftClass::SPECIAL
+};
+
+EventHandlerResult AutoShiftConfiguration::onSetup() {
+  settings_base_ = ::EEPROMSettings.requestSlice(sizeof(settings_));
+  uint32_t checker;
+
+  Runtime.storage().get(settings_base_, checker);
+
+  // Check if we have an empty eeprom...
+  if (checker == 0xffffffff) {
+    // ...if the eeprom was empty, store the default settings.
+    Runtime.storage().put(settings_base_, settings_);
+    Runtime.storage().commit();
+  }
+
+  Runtime.storage().get(settings_base_, settings_);
+  return EventHandlerResult::OK;
+}
+
+EventHandlerResult AutoShiftConfiguration::onFocusEvent(const char *command) {
+  enum {
+    DISABLED,
+    TIMEOUT,
+    CLASSES
+  } subCommand;
+
+  if (::Focus.handleHelp(command, PSTR("autoshift.disabled\n"
+                                       "autoshift.timeout\n"
+                                       "autoshift.classes")))
+    return EventHandlerResult::OK;
+
+  if (strncmp_P(command, PSTR("autoshift."), 10) != 0)
+    return EventHandlerResult::OK;
+  if (strcmp_P(command + 10, PSTR("disabled")) == 0)
+    subCommand = DISABLED;
+  else if (strcmp_P(command + 10, PSTR("timeout")) == 0)
+    subCommand = TIMEOUT;
+  else if (strcmp_P(command + 10, PSTR("classes")) == 0)
+    subCommand = CLASSES;
+  else
+    return EventHandlerResult::OK;
+
+  switch (subCommand) {
+  case DISABLED:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.disabled);
+    } else {
+      uint8_t v;
+      ::Focus.read(v);
+
+      if (v) {
+        settings_.disabled = true;
+        ::AutoShift.disable();
+      } else {
+        settings_.disabled = false;
+        ::AutoShift.enable();
+      }
+    }
+    break;
+
+  case TIMEOUT:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.timeout);
+    } else {
+      ::Focus.read(settings_.timeout);
+      ::AutoShift.setTimeout(settings_.timeout);
+    }
+    break;
+
+  case CLASSES:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.enabled_classes);
+    } else {
+      ::Focus.read(settings_.enabled_classes);
+      ::AutoShift.setEnabledClasses(settings_.enabled_classes);
+    }
+    break;
+  }
+
+  Runtime.storage().put(settings_base_, settings_);
+  Runtime.storage().commit();
+  return EventHandlerResult::EVENT_CONSUMED;
+}
+
 } // namespace plugin
 } // namespace kaleidoscope
 
 kaleidoscope::plugin::AutoShift AutoShift;
+kaleidoscope::plugin::AutoShiftConfiguration AutoShiftConfiguration;

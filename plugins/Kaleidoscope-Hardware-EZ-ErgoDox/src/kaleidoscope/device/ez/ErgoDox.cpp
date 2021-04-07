@@ -30,7 +30,8 @@
 #include "kaleidoscope/Runtime.h"
 #include <avr/wdt.h>
 #include "kaleidoscope/device/ez/ErgoDox/ErgoDoxScanner.h"
-#include "kaleidoscope/key_events.h"
+#include "kaleidoscope/KeyEvent.h"
+#include "kaleidoscope/Runtime.h"
 
 namespace kaleidoscope {
 namespace device {
@@ -115,7 +116,7 @@ void __attribute__((optimize(3))) ErgoDox::actOnMatrixScan() {
       uint8_t keyState = (bitRead(previousKeyState_[row], col) << 0) |
                          (bitRead(keyState_[row], col) << 1);
       if (keyState)
-        handleKeyswitchEvent(Key_NoKey, KeyAddr(row, col), keyState);
+        Runtime.handlePhysicalKeyEvent(KeyEvent(KeyAddr(row, col), keyState));
     }
     previousKeyState_[row] = keyState_[row];
   }

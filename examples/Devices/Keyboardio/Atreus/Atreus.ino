@@ -104,6 +104,7 @@ KALEIDOSCOPE_INIT_PLUGINS(
   EEPROMSettings,
   EEPROMKeymap,
   AutoShift,
+  AutoShiftConfiguration,
   Focus,
   FocusEEPROMCommand,
   FocusSettingsCommand,

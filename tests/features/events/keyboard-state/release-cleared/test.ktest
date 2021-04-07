@@ -44,8 +44,8 @@ RUN 4 ms
 # keyboard state array because it returns `EVENT_CONSUMED`.
 RELEASE LAYER_SHIFT
 RUN 1 cycle
-# Now we get a report because the `Y` is no longer in the active keys cache.
-EXPECT keyboard-report empty # Report should be empty
+# Now we still don't expect a report, because pressing or releasing a
+# layer-change key doesn't trigger a keyboard HID report.
 
 RUN 4 ms
 PRESS A

@@ -1,0 +1,53 @@
+VERSION 1
+
+KEYSWITCH A 0 0
+KEYSWITCH B 0 1
+
+# ==============================================================================
+NAME Quick tap
+
+RUN 5 ms
+PRESS A
+RUN 1 cycle
+EXPECT no keyboard-report
+RELEASE A
+RUN 1 cycle
+EXPECT keyboard-report Key_A
+RUN 1 cycle
+EXPECT keyboard-report empty
+RUN 1 cycle
+EXPECT no keyboard-report
+
+
+# ==============================================================================
+NAME Long tap
+
+RUN 5 ms
+PRESS A
+RUN 500 ms
+EXPECT no keyboard-report
+RUN 2 cycles
+EXPECT keyboard-report Key_LeftShift
+EXPECT keyboard-report Key_LeftShift Key_A
+RUN 1 cycle
+EXPECT no keyboard-report
+RELEASE A
+RUN 1 cycle
+EXPECT keyboard-report Key_LeftShift
+EXPECT keyboard-report empty
+
+# ==============================================================================
+NAME Rollover
+
+RUN 5 ms
+PRESS A
+RUN 3 cycles
+EXPECT no keyboard-report
+
+## TODO(algernon): These should be working!
+#PRESS B
+#RUN 1 cycle
+#EXPECT keyboard-report Key_A
+#EXPECT keyboard-report empty
+#EXPECT keyboard-report Key_B
+#EXPECT keyboard-report empty

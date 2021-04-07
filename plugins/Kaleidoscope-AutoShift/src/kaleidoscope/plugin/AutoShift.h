@@ -48,6 +48,9 @@ class AutoShift: public kaleidoscope::Plugin {
   static bool isClassEnabled(AutoShiftClass cls) {
     return enabled_classes_ & (uint8_t)cls;
   }
+  static void setEnabledClasses(uint8_t classes) {
+    enabled_classes_ = classes;
+  }
   static uint8_t enabledClasses() {
     return enabled_classes_;
   }
@@ -71,7 +74,25 @@ class AutoShift: public kaleidoscope::Plugin {
   static bool drop_shift_;
 };
 
+class AutoShiftConfiguration: public kaleidoscope::Plugin {
+ public:
+  AutoShiftConfiguration() {}
+
+  EventHandlerResult onSetup();
+  EventHandlerResult onFocusEvent(const char *command);
+
+ private:
+  typedef struct {
+    bool disabled;
+    uint16_t delay;
+    uint8_t enabled_classes;
+  } settings_t;
+  static settings_t settings_;
+  uint16_t settings_base_;
+};
+
 }
 }
 
 extern kaleidoscope::plugin::AutoShift AutoShift;
+extern kaleidoscope::plugin::AutoShiftConfiguration AutoShiftConfiguration;

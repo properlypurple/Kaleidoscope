@@ -1,6 +1,5 @@
 /* -*- mode: c++ -*-
  * Kaleidoscope-AutoShift -- AutoShift support for Kaleidoscope
- * Copyright (C) 2019  Jared Lindsay
  * Copyright (C) 2021  Keyboard.io, Inc.
  *
  * This program is free software: you can redistribute it and/or modify it under
@@ -26,7 +25,6 @@ namespace plugin {
 
 bool AutoShift::disabled_;
 bool AutoShift::drop_shift_;
-KeyAddr AutoShift::autoshift_addr_ = UnknownKeyswitchLocation;
 uint16_t AutoShift::delay_ = 500;
 uint32_t AutoShift::start_time_;
 uint8_t AutoShift::enabled_classes_ =
@@ -40,56 +38,61 @@ EventHandlerResult AutoShift::onKeyswitchEvent(Key &key, KeyAddr key_addr, uint8
     return EventHandlerResult::OK;
   }
 
-  // When a key toggles on, record the start time, and send the key. If we end
-  // up auto shifting, we'll backspace it.
-  if (keyToggledOn(key_state)) {
-    start_time_ = Runtime.millisAtCycleStart();
-    autoshift_addr_ = key_addr;
+  // If we have a possible AutoShift going on, and have more than one key
+  // pressed, abort the autoshift.
+  if (Runtime.device().pressedKeyswitchCount() > 1) {
+    if (start_time_) {
+      drop_shift_ = true;
+    }
+    start_time_ = 0;
     return EventHandlerResult::OK;
   }
 
-  // Releasing a key counts as accepting its current state, which we signal with
-  // setting the start time to zero.
-  if (keyToggledOff(key_state)) {
-    start_time_ = 0;
+  // We have a single key pressed, and AutoShift is enabled for it.
+
+  // If we toggled on, record the start time and consume the event.
+  if (keyToggledOn(key_state)) {
+    start_time_ = Runtime.millisAtCycleStart();
   }
 
-  // If a key is being held, check if it is time to shift it.
-  if (keyWasPressed(key_state) && start_time_ != 0 && key_addr == autoshift_addr_) {
-    if (Runtime.hasTimeExpired(start_time_, delay_)) {
-      // The delay expired, time to backspace back and send it shifted. We delay
-      // between press & release, so the host can properly register it.
-      Runtime.hid().keyboard().pressRawKey(Key_Backspace);
-      Runtime.hid().keyboard().sendReport();
-      ::delay(10);
-      Runtime.hid().keyboard().releaseRawKey(Key_Backspace);
-      // FIXME(algernon): We send a shift separately, for reasons explained
-      // below.
-      Runtime.hid().keyboard().pressRawKey(Key_LeftShift);
-      Runtime.hid().keyboard().sendReport();
-      ::delay(10);
+  // If we're being held past the elapsed time, auto-shift.
+  if (Runtime.hasTimeExpired(start_time_, delay_)) {
+    Runtime.hid().keyboard().pressKey(Key_LeftShift);
 
-      // FIXME(algernon): For some odd reason, this doesn't seem to send
-      // Shift+Key, and we have to do the shifting dance separately.
-      key = LSHIFT(key);
-      start_time_ = 0;
+    // If we're toggling off, reset the timer, and drop shift after the report
+    // is sent.
+    if (keyToggledOff(key_state)) {
       drop_shift_ = true;
-
-      return EventHandlerResult::OK;
+      start_time_ = 0;
     }
+
+    // ...otherwise, with shift pressed, just proceed.
+    return EventHandlerResult::OK;
   }
 
-  // If we haven't timed out yet, or cancelled the auto-shift by release,
-  // consume the event to avoid the host-side auto-repeat.
+  // If we're _not_ held past the elapsed time, and we toggle off, send the
+  // press event, reset the timer, and proceed - this way the host will get both
+  // the press and the release event in proper order.
+  if (keyToggledOff(key_state)) {
+    Runtime.hid().keyboard().pressKey(key);
+    Runtime.hid().keyboard().sendReport();
+    ::delay(10);
+
+    start_time_ = 0;
+    return EventHandlerResult::OK;
+  }
+
+  // In any other case, consume the event.
   return EventHandlerResult::EVENT_CONSUMED;
 }
 
 EventHandlerResult AutoShift::afterEachCycle() {
   if (drop_shift_) {
-    Runtime.hid().keyboard().releaseRawKey(Key_LeftShift);
+    Runtime.hid().keyboard().releaseKey(Key_LeftShift);
+    Runtime.hid().keyboard().sendReport();
+    ::delay(10);
     drop_shift_ = false;
   }
-
   return EventHandlerResult::OK;
 }
 

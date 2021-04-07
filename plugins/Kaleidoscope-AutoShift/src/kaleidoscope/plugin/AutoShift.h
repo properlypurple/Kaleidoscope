@@ -1,6 +1,5 @@
 /* -*- mode: c++ -*-
  * Kaleidoscope-AutoShift -- AutoShift support for Kaleidoscope
- * Copyright (C) 2019  Jared Lindsay
  * Copyright (C) 2021  Keyboard.io, Inc.
  *
  * This program is free software: you can redistribute it and/or modify it under
@@ -61,8 +60,8 @@ class AutoShift: public kaleidoscope::Plugin {
   }
 
   EventHandlerResult onKeyswitchEvent(Key &key, KeyAddr key_addr, uint8_t key_state);
-  static bool enabledForKey(Key key);
   EventHandlerResult afterEachCycle();
+  static bool enabledForKey(Key key);
 
  private:
   static bool disabled_;
@@ -70,7 +69,6 @@ class AutoShift: public kaleidoscope::Plugin {
   static uint16_t delay_;
   static uint32_t start_time_;
   static bool drop_shift_;
-  static KeyAddr autoshift_addr_;
 };
 
 }

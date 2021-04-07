@@ -33,9 +33,9 @@ bool AutoShift::drop_shift_;
 uint16_t AutoShift::delay_ = 500;
 uint32_t AutoShift::start_time_;
 uint8_t AutoShift::enabled_classes_ =
-    (uint8_t)AutoShift::AutoShiftClass::LETTERS |
-    (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
-    (uint8_t)AutoShift::AutoShiftClass::SPECIAL;
+  (uint8_t)AutoShift::AutoShiftClass::LETTERS |
+  (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
+  (uint8_t)AutoShift::AutoShiftClass::SPECIAL;
 
 EventHandlerResult AutoShift::onKeyswitchEvent(Key &key, KeyAddr key_addr, uint8_t key_state) {
   // If the plugin is disabled, or isn't enabled for the current key, bail out.
@@ -125,8 +125,8 @@ AutoShiftConfiguration::settings_t AutoShiftConfiguration::settings_ = {
   .disabled = false,
   .delay = 500,
   .enabled_classes = (uint8_t)AutoShift::AutoShiftClass::LETTERS |
-    (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
-    (uint8_t)AutoShift::AutoShiftClass::SPECIAL
+  (uint8_t)AutoShift::AutoShiftClass::NUMBERS |
+  (uint8_t)AutoShift::AutoShiftClass::SPECIAL
 };
 
 EventHandlerResult AutoShiftConfiguration::onSetup() {
@@ -170,40 +170,40 @@ EventHandlerResult AutoShiftConfiguration::onFocusEvent(const char *command) {
     return EventHandlerResult::OK;
 
   switch (subCommand) {
-    case DISABLED:
-      if (::Focus.isEOL()) {
-        ::Focus.send(settings_.disabled);
-      } else {
-        uint8_t v;
-        ::Focus.read(v);
+  case DISABLED:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.disabled);
+    } else {
+      uint8_t v;
+      ::Focus.read(v);
 
-        if (v) {
-          settings_.disabled = true;
-          ::AutoShift.disable();
-        } else {
-          settings_.disabled = false;
-          ::AutoShift.enable();
-        }
-      }
-      break;
-
-    case DELAY:
-      if (::Focus.isEOL()) {
-        ::Focus.send(settings_.delay);
+      if (v) {
+        settings_.disabled = true;
+        ::AutoShift.disable();
       } else {
-        ::Focus.read(settings_.delay);
-        ::AutoShift.setDelay(settings_.delay);
+        settings_.disabled = false;
+        ::AutoShift.enable();
       }
-      break;
+    }
+    break;
 
-    case CLASSES:
-      if (::Focus.isEOL()) {
-        ::Focus.send(settings_.enabled_classes);
-      } else {
-        ::Focus.read(settings_.enabled_classes);
-        ::AutoShift.setEnabledClasses(settings_.enabled_classes);
-      }
-      break;
+  case DELAY:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.delay);
+    } else {
+      ::Focus.read(settings_.delay);
+      ::AutoShift.setDelay(settings_.delay);
+    }
+    break;
+
+  case CLASSES:
+    if (::Focus.isEOL()) {
+      ::Focus.send(settings_.enabled_classes);
+    } else {
+      ::Focus.read(settings_.enabled_classes);
+      ::AutoShift.setEnabledClasses(settings_.enabled_classes);
+    }
+    break;
   }
 
   Runtime.storage().put(settings_base_, settings_);

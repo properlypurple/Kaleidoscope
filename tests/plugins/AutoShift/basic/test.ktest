@@ -1,0 +1,41 @@
+VERSION 1
+
+KEYSWITCH LSHIFT    0 0
+KEYSWITCH RSHIFT    0 1
+KEYSWITCH A         1 0
+KEYSWITCH B         1 1
+
+# ==============================================================================
+NAME AutoShift tap
+
+RUN 5 ms
+PRESS A
+
+RUN 4 ms
+RELEASE A
+RUN 1 cycle
+EXPECT keyboard-report Key_A # Report should contain `A` (0x04)
+EXPECT keyboard-report empty # Report should be empty
+
+RUN 5 ms
+
+# ==============================================================================
+NAME AutoShift long press
+
+RUN 3 ms
+PRESS A
+RUN 1 cycle
+
+# Timeout is 20ms
+RUN 20 ms
+RUN 1 cycle
+EXPECT keyboard-report Key_LeftShift # Report should contain `shift`
+EXPECT keyboard-report Key_LeftShift Key_A # Report should add `A` (0x04)
+
+RUN 4 ms
+RELEASE A
+RUN 1 cycle
+EXPECT keyboard-report Key_LeftShift # Report should contain `shift`
+EXPECT keyboard-report empty # Report should be empty
+
+RUN 5 ms

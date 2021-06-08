@@ -17,7 +17,7 @@
  */
 
 #ifndef KALEIDOSCOPE_VIRTUAL_BUILD
-#ifdef ARDUINO_AVR_ATREUS62
+#ifdef ARDUINO_AVR_PROFET_ATREUS62
 
 #include "kaleidoscope/Runtime.h"
 #include "kaleidoscope/driver/keyscanner/Base_Impl.h"
@@ -31,7 +31,7 @@ using KeyScanner = typename kaleidoscope::device::profet::Atreus62Props::KeyScan
 
 namespace kaleidoscope {
 namespace device {
-namespace keyboardio {
+namespace profet {
 
 // `KeyScannerProps` here refers to the alias set up above. We do not need to
 // prefix the `matrix_rows` and `matrix_columns` names within the array

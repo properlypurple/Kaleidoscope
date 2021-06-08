@@ -18,7 +18,7 @@
 
 #pragma once
 
-#ifdef ARDUINO_AVR_ATREUS62
+#ifdef ARDUINO_AVR_PROFET_ATREUS62
 
 #include <Arduino.h>
 
@@ -27,10 +27,10 @@
 
 namespace kaleidoscope {
 namespace device {
-namespace keyboardio {
+namespace profet {
 
 
-struct AtreusProps : kaleidoscope::device::ATmega32U4KeyboardProps {
+struct Atreus62Props : kaleidoscope::device::ATmega32U4KeyboardProps {
   struct KeyScannerProps : public kaleidoscope::driver::keyscanner::ATmegaProps {
 
 
@@ -38,8 +38,8 @@ struct AtreusProps : kaleidoscope::device::ATmega32U4KeyboardProps {
     static constexpr uint8_t matrix_columns = 14;
     typedef MatrixAddr<matrix_rows, matrix_columns> KeyAddr;
 #ifndef KALEIDOSCOPE_VIRTUAL_BUILD
-    static constexpr uint8_t matrix_row_pins[matrix_rows] =  {PIN_B1, PIN_F7, PIN_F6, PIN_F5, PIN_F4};
-    static constexpr uint8_t matrix_col_pins[matrix_columns] = {PIN_B3, PIN_B2, PIN_B6, PIN_B5, PIN_B4, PIN_E6, PIN_D7, PIN_C6, PIN_D4, PIN_D0, PIN_D2, PIN_D3};
+    static constexpr uint8_t matrix_row_pins[matrix_rows] = {PIN_D0, PIN_D1, PIN_D2, PIN_D3, PIN_D4};
+    static constexpr uint8_t matrix_col_pins[matrix_columns] = {PIN_F4, PIN_F5, PIN_F6, PIN_F7, PIN_B1, PIN_B3, PIN_B2, PIN_B6, PIN_B5, PIN_B4, PIN_E6, PIN_D7, PIN_C6};
 #endif // ifndef KALEIDOSCOPE_VIRTUAL_BUILD
   };
 
@@ -49,53 +49,36 @@ struct AtreusProps : kaleidoscope::device::ATmega32U4KeyboardProps {
 };
 
 #ifndef KALEIDOSCOPE_VIRTUAL_BUILD
-class Atreus: public kaleidoscope::device::ATmega32U4Keyboard<AtreusProps> {};
+class Atreus62: public kaleidoscope::device::ATmega32U4Keyboard<Atreus62Props> {};
 #else // ifndef KALEIDOSCOPE_VIRTUAL_BUILD
 /* Device definition omitted for virtual device builds.
  * We need to forward declare the device name, though, as there are
  * some legacy extern references to boards whose definition
  * depends on this.
  */
-class Atreus;
+class Atreus62;
 
 #endif // ifndef KALEIDOSCOPE_VIRTUAL_BUILD
 
 
 #define PER_KEY_DATA(dflt,                                                           \
-    R0C0, R0C1, R0C2, R0C3, R0C4, R0C5,             R0C8, R0C9, R0C10, R0C11, R0C12, \
-    R1C0, R1C1, R1C2, R1C3, R1C4, R1C5,             R1C8, R1C9, R1C10, R1C11, R1C12, \
-    R2C0, R2C1, R2C2, R2C3, R2C4, R2C5,             R2C8, R2C9, R2C10, R2C11, R2C12, \
-    R3C0, R3C1, R3C2, R3C3, R3C4, R3C5,             R3C8, R3C9, R3C10, R3C11, R3C12, \
+    R0C0, R0C1, R0C2, R0C3, R0C4, R0C5,       R0C7, R0C8, R0C9, R0C10, R0C11, R0C12, \
+    R1C0, R1C1, R1C2, R1C3, R1C4, R1C5,       R1C7, R1C8, R1C9, R1C10, R1C11, R1C12, \
+    R2C0, R2C1, R2C2, R2C3, R2C4, R2C5,       R2C7, R2C8, R2C9, R2C10, R2C11, R2C12, \
+    R3C0, R3C1, R3C2, R3C3, R3C4, R3C5, R3C6, R3C7, R3C8, R3C9, R3C10, R3C11, R3C12, \
     R4C0, R4C1, R4C2, R4C3, R4C4, R4C5, R4C6, R4C7, R4C8, R4C9, R4C10, R4C11, R4C12  \
   )                                                                                  \
-  R0C0, R0C1, R0C2, R0C3, R0C4, R0C5, XXX,  XXX,  R0C8, R0C9, R0C10, R0C11, R0C12, \
-  R1C0, R1C1, R1C2, R1C3, R1C4, R1C5, XXX,  XXX,  R1C8, R1C9, R1C10, R1C11, R1C12, \
-  R2C0, R2C1, R2C2, R2C3, R2C4, R2C5, XXX,  XXX,  R2C8, R2C9, R2C10, R2C11, R2C12, \
-  R3C0, R3C1, R3C2, R3C3, R3C4, R3C5, XXX,  XXX,  R3C8, R3C9, R3C10, R3C11, R3C12, \
-  R4C0, R4C1, R4C2, R4C3, R4C4, R4C5, R4C6, R4C7, R4C8, R4C9, R4C10, R4C11, R4C12  \
+  R0C0, R0C1, R0C2, R0C3, R0C4, R0C5, XXX,  R0C7,  R0C8, R0C9, R0C10, R0C11, R0C12, \
+  R1C0, R1C1, R1C2, R1C3, R1C4, R1C5, XXX,  R1C7,  R1C8, R1C9, R1C10, R1C11, R1C12, \
+  R2C0, R2C1, R2C2, R2C3, R2C4, R2C5, XXX,  R2C7,  R2C8, R2C9, R2C10, R2C11, R2C12, \
+  R3C0, R3C1, R3C2, R3C3, R3C4, R3C5, R3C6, R3C7,  R3C8, R3C9, R3C10, R3C11, R3C12, \
+  R4C0, R4C1, R4C2, R4C3, R4C4, R4C5, R4C6, R4C7,  R4C8, R4C9, R4C10, R4C11, R4C12
 
-#define PER_KEY_DATA_STACKED(dflt,                                            \
-    R0C0, R0C1, R0C2, R0C3, R0C4, R0C5,                                       \
-    R1C0, R1C1, R1C2, R1C3, R1C4, R1C5,                                       \
-    R2C0, R2C1, R2C2, R2C3, R2C4, R2C5,                                       \
-    R3C0, R3C1, R3C2, R3C3, R3C4, R3C5                                        \
-    R4C0, R4C1, R4C2, R3C3, R3C4, R4C5, R4C6,                                 \
-                                                                              \
-          R0C8, R0C9, R0C10, R0C11, R0C12,                                    \
-          R1C8, R1C9, R1C10, R1C11, R1C12,                                    \
-          R2C8, R2C9, R2C10, R2C11, R2C12,                                    \
-          R3C8, R3C9, R3C10, R3C11, R3C12,                                    \
-    R4C7, R4C8, R4C9, R4C10, R4C11, R4C12
-  )                                                                           \
-  R0C0, R0C1, R0C2, R0C3, R0C4, R0C5, XXX,  XXX,  R0C8, R0C9, R0C10, R0C11, R0C12, \
-  R1C0, R1C1, R1C2, R1C3, R1C4, R1C5, XXX,  XXX,  R1C8, R1C9, R1C10, R1C11, R1C12, \
-  R2C0, R2C1, R2C2, R2C3, R2C4, R2C5, XXX,  XXX,  R2C8, R2C9, R2C10, R2C11, R2C12, \
-  R3C0, R3C1, R3C2, R3C3, R3C4, R3C5, XXX,  XXX,  R3C8, R3C9, R3C10, R3C11, R3C12, \
-  R4C0, R4C1, R4C2, R4C3, R4C4, R4C5, R4C6, R4C7, R4C8, R4C9, R4C10, R4C11, R4C12  \
+
 }
 }
 
-EXPORT_DEVICE(kaleidoscope::device::Atreus62)
+EXPORT_DEVICE(kaleidoscope::device::profet::Atreus62)
 
 }
 
